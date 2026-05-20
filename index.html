@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Newton Method and Origami</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f5f5f5;
+    }
+
+    h1 {
+        text-align: center;
+    }
+
+    .controls {
+        margin-bottom: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+    }
+
+    input {
+        width: 80px;
+        margin-right: 10px;
+    }
+
+    canvas {
+        background: white;
+        border-radius: 10px;
+        padding: 10px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Newton Method ↔ Origami</h1>
+
+<div class="controls">
+    <label>A:</label>
+    <input type="number" id="A" value="1">
+
+    <label>B:</label>
+    <input type="number" id="B" value="-2">
+
+    <label>C:</label>
+    <input type="number" id="C" value="-5">
+
+    <label>D:</label>
+    <input type="number" id="D" value="6">
+
+    <button onclick="runNewton()">Run</button>
+
+    <p id="info"></p>
+</div>
+
+<canvas id="chart" width="1000" height="500"></canvas>
+
+<script>
+
+let chart;
+
+function runNewton() {
+
+    // ===== coefficients =====
+    const A = parseFloat(document.getElementById("A").value);
+    const B = parseFloat(document.getElementById("B").value);
+    const C = parseFloat(document.getElementById("C").value);
+    const D = parseFloat(document.getElementById("D").value);
+
+    // normalize
+    const a = B / A;
+    const b = C / A;
+    const c = D / A;
+
+    // origami information
+    document.getElementById("info").innerHTML =
+        `
+        <b>Origami correspondence</b><br>
+        l₂ : x = 1<br>
+        l₁ : y = ${a.toFixed(3)} - ${c.toFixed(3)}
+        = ${(a - c).toFixed(3)}<br>
+        p = y-intercept of fold line
+        `;
+
+    // ===== functions =====
+    function f(p) {
+        return p**3 + a*p**2 + b*p + c;
+    }
+
+    function df(p) {
+        return 3*p**2 + 2*a*p + b;
+    }
+
+    // ===== Newton Method =====
+    function newton(p0, tol=1e-6, maxIter=100) {
+
+        let p = p0;
+
+        for(let i=0; i<maxIter; i++) {
+
+            let d = df(p);
+
+            if(Math.abs(d) < 1e-10) {
+                return null;
+            }
+
+            let newP = p - f(p)/d;
+
+            if(Math.abs(newP - p) < tol) {
+                return newP;
+            }
+
+            p = newP;
+        }
+
+        return null;
+    }
+
+    // ===== root classification =====
+    let roots = [];
+
+    function classify(p) {
+
+        for(let r of roots) {
+            if(Math.abs(p - r) < 0.05) {
+                return r;
+            }
+        }
+
+        roots.push(p);
+        return p;
+    }
+
+    // ===== data generation =====
+    let datasetsMap = {};
+
+    for(let x=-200; x<=400; x++) {
+
+        let start = x * 0.05;
+
+        let result = newton(start);
+
+        if(result === null || !isFinite(result)) {
+            continue;
+        }
+
+        let root = classify(result);
+
+        if(!datasetsMap[root]) {
+            datasetsMap[root] = [];
+        }
+
+        datasetsMap[root].push({
+            x: start,
+            y: root
+        });
+    }
+
+    // ===== colors =====
+    const colors = [
+        "red",
+        "blue",
+        "green",
+        "purple",
+        "orange",
+        "brown"
+    ];
+
+    // ===== datasets =====
+    let datasets = [];
+
+    let index = 0;
+
+    for(let root in datasetsMap) {
+
+        datasets.push({
+            label: `→ ${Number(root).toFixed(3)}`,
+            data: datasetsMap[root],
+            pointRadius: 3,
+            showLine: false,
+            borderColor: colors[index % colors.length],
+            backgroundColor: colors[index % colors.length]
+        });
+
+        index++;
+    }
+
+    // ===== destroy old chart =====
+    if(chart) {
+        chart.destroy();
+    }
+
+    // ===== draw chart =====
+    const ctx = document.getElementById("chart");
+
+    chart = new Chart(ctx, {
+        type: 'scatter',
+
+        data: {
+            datasets: datasets
+        },
+
+        options: {
+            responsive: true,
+
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Newton Method Convergence'
+                }
+            },
+
+            scales: {
+
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Initial Value'
+                    }
+                },
+
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Converged Root'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// first run
+runNewton();
+
+</script>
+
+</body>
+</html>
