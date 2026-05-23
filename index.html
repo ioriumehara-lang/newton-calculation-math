@@ -80,14 +80,14 @@ canvas:active{
 
 <br><br>
 
-v1.4 Update
+v1.5 Update
 
 <ul>
-<li>初期値範囲を極値から自動計算</li>
-<li>グラフ表示範囲をさらに縮小</li>
-<li>Space連打で追いやすく改善</li>
-<li>Rキー再抽選</li>
-<li>隠しコマンド実装</li>
+<li>Convergence Map を超高密度化</li>
+<li>刻み幅を 0.008 に変更</li>
+<li>表示範囲を狭く調整</li>
+<li>Space連打向け改善</li>
+<li>umehara 隠しコマンド維持</li>
 </ul>
 
 </div>
@@ -284,9 +284,7 @@ function startNewton(){
 
 
 
-    // =========================
     // 極値
-    // =========================
 
     let discriminant =
         4*B*B - 12*A*C;
@@ -345,9 +343,7 @@ function startNewton(){
 
 
 
-    // =========================
     // 初期値
-    // =========================
 
     currentX =
         Math.random() *
@@ -356,9 +352,7 @@ function startNewton(){
 
 
 
-    // =========================
     // 表示範囲
-    // =========================
 
     BASE_X =
         Math.max(
@@ -535,9 +529,13 @@ function drawConvergenceMap(){
 
     let datasetsMap = {};
 
-    for(let i=-1200;i<=1200;i++){
 
-        let start = i * 0.025;
+
+    // 超高密度
+
+    for(let i=-4000;i<=4000;i++){
+
+        let start = i * 0.008;
 
         let result =
             newton(start,A,B,C,D);
@@ -578,7 +576,7 @@ function drawConvergenceMap(){
 
             showLine:false,
 
-            pointRadius:2,
+            pointRadius:1.5,
 
             borderColor:
                 colors[index%colors.length],
