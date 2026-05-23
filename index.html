@@ -102,8 +102,6 @@ let steps = [];
 
 let currentStep = 0;
 
-let currentX = 0;
-
 let graphRange = 30;
 
 
@@ -206,15 +204,16 @@ function generate(){
 
 
 
-    // ← 初期値を広い範囲に
-    currentX =
+    // 初期値を広く
+
+    let start =
         Math.random()*80 - 40;
 
 
 
     steps =
         buildNewtonSteps(
-            currentX,
+            start,
             a,b,c,d
         );
 
@@ -239,15 +238,11 @@ function draw(a,b,c,d){
 
     let curve = [];
 
-
-
-    // ← 描画範囲をかなり広く
     for(let x=-graphRange;x<=graphRange;x+=0.05){
 
         let y =
             f(x,a,b,c,d);
 
-        // 爆発防止
         if(Math.abs(y)<1000){
 
             curve.push({
@@ -314,12 +309,14 @@ function draw(a,b,c,d){
 
 
 
-    // 現在のステップ
+    // =========================
+    // ここが重要
+    // 今までの全ステップを描画
+    // =========================
 
-    if(currentStep < steps.length){
+    for(let i=0;i<=currentStep;i++){
 
-        let s =
-            steps[currentStep];
+        let s = steps[i];
 
 
 
@@ -332,21 +329,33 @@ function draw(a,b,c,d){
             let y =
                 s.slope*(x-s.x)+s.y;
 
-            tangent.push({
-                x:x,
-                y:y
-            });
+            if(Math.abs(y)<1000){
+
+                tangent.push({
+                    x:x,
+                    y:y
+                });
+            }
         }
 
         datasets.push({
 
-            label:"Tangent",
+            label:
+                i===currentStep
+                ? "Current Tangent"
+                : "Past Tangent",
 
             data:tangent,
 
-            borderColor:"red",
+            borderColor:
+                i===currentStep
+                ? "red"
+                : "rgba(255,0,0,0.25)",
 
-            borderWidth:3,
+            borderWidth:
+                i===currentStep
+                ? 3
+                : 2,
 
             showLine:true,
 
@@ -359,7 +368,10 @@ function draw(a,b,c,d){
 
         datasets.push({
 
-            label:"Current Point",
+            label:
+                i===currentStep
+                ? "Current Point"
+                : "Past Point",
 
             data:[
                 {
@@ -368,9 +380,15 @@ function draw(a,b,c,d){
                 }
             ],
 
-            backgroundColor:"red",
+            backgroundColor:
+                i===currentStep
+                ? "red"
+                : "rgba(255,0,0,0.4)",
 
-            pointRadius:7
+            pointRadius:
+                i===currentStep
+                ? 7
+                : 5
         });
 
 
@@ -379,7 +397,10 @@ function draw(a,b,c,d){
 
         datasets.push({
 
-            label:"Next Approximation",
+            label:
+                i===currentStep
+                ? "Current Move"
+                : "Past Move",
 
             data:[
                 {
@@ -392,15 +413,45 @@ function draw(a,b,c,d){
                 }
             ],
 
-            borderColor:"green",
+            borderColor:
+                i===currentStep
+                ? "green"
+                : "rgba(0,150,0,0.3)",
 
             borderDash:[10,10],
 
-            borderWidth:3,
+            borderWidth:
+                i===currentStep
+                ? 3
+                : 2,
 
             showLine:true,
 
             pointRadius:0
+        });
+
+
+
+        // x軸上の点
+
+        datasets.push({
+
+            data:[
+                {
+                    x:s.next,
+                    y:0
+                }
+            ],
+
+            backgroundColor:
+                i===currentStep
+                ? "green"
+                : "rgba(0,150,0,0.4)",
+
+            pointRadius:
+                i===currentStep
+                ? 6
+                : 4
         });
     }
 
@@ -432,7 +483,7 @@ function draw(a,b,c,d){
             plugins:{
 
                 legend:{
-                    display:true
+                    display:false
                 },
 
                 zoom:{
