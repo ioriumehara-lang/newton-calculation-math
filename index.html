@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Damped Newton Method Visualizer</title>
+<title>Newton Method Visualizer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -19,33 +19,38 @@ h1{
     text-align:center;
 }
 
-.controls{
+.panel{
     background:white;
-    padding:15px;
-    border-radius:10px;
+    padding:20px;
+    border-radius:12px;
     margin-bottom:20px;
 }
 
 input{
-    width:70px;
+    width:80px;
     margin-right:10px;
 }
 
 button{
-    padding:8px 15px;
+    padding:10px 20px;
     cursor:pointer;
 }
 
 canvas{
     background:white;
-    border-radius:10px;
+    border-radius:12px;
     padding:10px;
-    margin-top:20px;
+    cursor:grab;
+}
+
+canvas:active{
+    cursor:grabbing;
 }
 
 #info{
-    margin-top:10px;
+    margin-top:20px;
     font-size:18px;
+    line-height:1.8;
 }
 
 </style>
@@ -53,9 +58,13 @@ canvas{
 
 <body>
 
-<h1>Damped Newton Method Visualizer</h1>
+<h1>Newton Method Visualizer</h1>
 
-<div class="controls">
+<div class="panel">
+
+<p>
+方程式：
+</p>
 
 <p>
 ax³ + bx² + cx + d = 0
@@ -73,356 +82,340 @@ ax³ + bx² + cx + d = 0
 <label>d</label>
 <input type="number" id="d" value="6">
 
-<button onclick="startNewton()">
-Start
+<button onclick="generate()">
+生成
 </button>
 
-<p>
-スペースキーを押すと次のステップへ進む
-</p>
-
-<p>
-マウスホイール / 2本指で拡大縮小
-</p>
-
-<p id="info"></p>
+<div id="info"></div>
 
 </div>
 
-<h2>Damped Newton Animation</h2>
-<canvas id="chart1" width="1200" height="600"></canvas>
-
-<h2>Convergence Map</h2>
-<canvas id="chart2" width="1200" height="400"></canvas>
+<canvas id="chart" width="1200" height="900"></canvas>
 
 <script>
 
 Chart.register(ChartZoom);
 
-let chart1;
-let chart2;
+let chart;
 
-let currentX;
+let steps = [];
+
 let currentStep = 0;
 
-let A,B,C,D;
+let currentX = 0;
 
-let pathData = [];
+let graphRange = 30;
 
-// 固定λ
-const LAMBDA = 0.5;
 
-const BASE_X = 6;
-const BASE_Y = 20;
+
+// =========================
+// 数学
+// =========================
 
 function f(x,a,b,c,d){
-    return a*x**3 + b*x**2 + c*x + d;
+
+    return (
+        a*x*x*x +
+        b*x*x +
+        c*x +
+        d
+    );
 }
 
 function df(x,a,b,c){
-    return 3*a*x**2 + 2*b*x + c;
+
+    return (
+        3*a*x*x +
+        2*b*x +
+        c
+    );
 }
 
-function newton(start,a,b,c,d){
+
+
+// =========================
+// ニュートン法
+// =========================
+
+function buildNewtonSteps(start,a,b,c,d){
+
+    let arr = [];
 
     let x = start;
 
-    for(let i=0;i<300;i++){
+    for(let i=0;i<25;i++){
 
-        let slope = df(x,a,b,c);
+        let y =
+            f(x,a,b,c,d);
 
-        if(Math.abs(slope) < 1e-10){
-            return null;
+        let slope =
+            df(x,a,b,c);
+
+        if(Math.abs(slope)<1e-10){
+            break;
         }
 
-        let newX =
-            x -
-            LAMBDA * f(x,a,b,c,d)/slope;
+        let next =
+            x - y/slope;
 
-        if(Math.abs(newX - x) < 1e-7){
-            return newX;
+        arr.push({
+
+            x:x,
+            y:y,
+            next:next,
+            slope:slope
+        });
+
+        if(Math.abs(next-x)<0.000001){
+            break;
         }
 
-        x = newX;
+        x = next;
     }
 
-    return null;
+    return arr;
 }
 
-function zoomOptions(chart){
 
-    return {
 
-        pan:{
-            enabled:false
-        },
+// =========================
+// 生成
+// =========================
 
-        zoom:{
+function generate(){
 
-            wheel:{
-                enabled:true
-            },
+    let a =
+        parseFloat(
+            document.getElementById("a").value
+        );
 
-            pinch:{
-                enabled:true
-            },
+    let b =
+        parseFloat(
+            document.getElementById("b").value
+        );
 
-            mode:'xy',
+    let c =
+        parseFloat(
+            document.getElementById("c").value
+        );
 
-            onZoom(){
+    let d =
+        parseFloat(
+            document.getElementById("d").value
+        );
 
-                const xRange =
-                    chart.scales.x.max -
-                    chart.scales.x.min;
 
-                const yRange =
-                    chart.scales.y.max -
-                    chart.scales.y.min;
 
-                chart.options.scales.x.min = -xRange/2;
-                chart.options.scales.x.max =  xRange/2;
+    // ← 初期値を広い範囲に
+    currentX =
+        Math.random()*80 - 40;
 
-                chart.options.scales.y.min = -yRange/2;
-                chart.options.scales.y.max =  yRange/2;
 
-                chart.update('none');
-            }
-        }
-    };
-}
 
-function startNewton(){
-
-    A = parseFloat(document.getElementById("a").value);
-    B = parseFloat(document.getElementById("b").value);
-    C = parseFloat(document.getElementById("c").value);
-    D = parseFloat(document.getElementById("d").value);
-
-    currentX = Math.random()*10 - 5;
+    steps =
+        buildNewtonSteps(
+            currentX,
+            a,b,c,d
+        );
 
     currentStep = 0;
 
-    pathData = [];
-
-    drawMainGraph();
-
-    drawConvergenceMap();
-
-    document.getElementById("info").innerHTML =
-    `
-    初期値:
-    ${currentX.toFixed(6)}
-
-    <br><br>
-
-    λ:
-    ${LAMBDA}
-
-    <br><br>
-
-    スペースキーで次へ
-    `;
+    draw(a,b,c,d);
 }
 
-function drawMainGraph(){
 
-    let graphData = [];
 
-    for(let X=-6; X<=6; X+=0.03){
+// =========================
+// 描画
+// =========================
 
-        graphData.push({
-            x:X,
-            y:f(X,A,B,C,D)
-        });
-    }
-
-    let xAxis = [
-        {x:-1000, y:0},
-        {x:1000, y:0}
-    ];
-
-    let yAxis = [
-        {x:0, y:-1000},
-        {x:0, y:1000}
-    ];
-
-    if(chart1){
-        chart1.destroy();
-    }
-
-    const ctx = document.getElementById("chart1");
-
-    chart1 = new Chart(ctx,{
-
-        type:'scatter',
-
-        data:{
-            datasets:[
-
-                {
-                    data:graphData,
-                    borderColor:'blue',
-                    showLine:true,
-                    pointRadius:0,
-                    borderWidth:2
-                },
-
-                {
-                    data:xAxis,
-                    borderColor:'black',
-                    showLine:true,
-                    pointRadius:0,
-                    borderWidth:5
-                },
-
-                {
-                    data:yAxis,
-                    borderColor:'black',
-                    showLine:true,
-                    pointRadius:0,
-                    borderWidth:5
-                },
-
-                {
-                    data:pathData,
-                    borderColor:'red',
-                    backgroundColor:'red',
-                    showLine:true,
-
-                    // 点を小さく
-                    pointRadius:3,
-
-                    borderWidth:2
-                }
-
-            ]
-        },
-
-        options:{
-
-            animation:false,
-
-            plugins:{
-
-                legend:{
-                    display:false
-                }
-            },
-
-            scales:{
-
-                x:{
-                    type:'linear',
-                    min:-BASE_X,
-                    max:BASE_X,
-
-                    grid:{
-                        drawBorder:false
-                    }
-                },
-
-                y:{
-                    min:-BASE_Y,
-                    max:BASE_Y,
-
-                    grid:{
-                        drawBorder:false
-                    }
-                }
-            }
-        }
-    });
-
-    chart1.options.plugins.zoom =
-        zoomOptions(chart1);
-}
-
-function drawConvergenceMap(){
-
-    let roots = [];
-
-    function classify(r){
-
-        for(let x of roots){
-
-            if(Math.abs(x-r)<0.05){
-                return x;
-            }
-        }
-
-        roots.push(r);
-
-        return r;
-    }
-
-    let datasetsMap = {};
-
-    for(let i=-400;i<=400;i++){
-
-        let start = i * 0.02;
-
-        let result =
-            newton(
-                start,
-                A,B,C,D
-            );
-
-        if(result===null || !isFinite(result)){
-            continue;
-        }
-
-        let root = classify(result);
-
-        if(!datasetsMap[root]){
-            datasetsMap[root]=[];
-        }
-
-        datasetsMap[root].push({
-            x:start,
-            y:root
-        });
-    }
-
-    const colors = [
-        "red",
-        "blue",
-        "green",
-        "purple",
-        "orange",
-        "brown"
-    ];
+function draw(a,b,c,d){
 
     let datasets = [];
 
-    let index = 0;
 
-    for(let root in datasetsMap){
+
+    // 関数グラフ
+
+    let curve = [];
+
+
+
+    // ← 描画範囲をかなり広く
+    for(let x=-graphRange;x<=graphRange;x+=0.05){
+
+        let y =
+            f(x,a,b,c,d);
+
+        // 爆発防止
+        if(Math.abs(y)<1000){
+
+            curve.push({
+                x:x,
+                y:y
+            });
+        }
+    }
+
+    datasets.push({
+
+        label:"f(x)",
+
+        data:curve,
+
+        borderColor:"blue",
+
+        borderWidth:3,
+
+        showLine:true,
+
+        pointRadius:0
+    });
+
+
+
+    // x軸
+
+    datasets.push({
+
+        data:[
+            {x:-1000,y:0},
+            {x:1000,y:0}
+        ],
+
+        borderColor:"black",
+
+        borderWidth:4,
+
+        showLine:true,
+
+        pointRadius:0
+    });
+
+
+
+    // y軸
+
+    datasets.push({
+
+        data:[
+            {x:0,y:-1000},
+            {x:0,y:1000}
+        ],
+
+        borderColor:"black",
+
+        borderWidth:4,
+
+        showLine:true,
+
+        pointRadius:0
+    });
+
+
+
+    // 現在のステップ
+
+    if(currentStep < steps.length){
+
+        let s =
+            steps[currentStep];
+
+
+
+        // 接線
+
+        let tangent = [];
+
+        for(let x=s.x-15;x<=s.x+15;x+=0.1){
+
+            let y =
+                s.slope*(x-s.x)+s.y;
+
+            tangent.push({
+                x:x,
+                y:y
+            });
+        }
 
         datasets.push({
 
-            data:datasetsMap[root],
+            label:"Tangent",
 
-            showLine:false,
+            data:tangent,
 
-            pointRadius:2,
+            borderColor:"red",
 
-            borderColor:colors[index%colors.length],
+            borderWidth:3,
 
-            backgroundColor:colors[index%colors.length]
+            showLine:true,
+
+            pointRadius:0
         });
 
-        index++;
+
+
+        // 現在点
+
+        datasets.push({
+
+            label:"Current Point",
+
+            data:[
+                {
+                    x:s.x,
+                    y:s.y
+                }
+            ],
+
+            backgroundColor:"red",
+
+            pointRadius:7
+        });
+
+
+
+        // x軸への移動
+
+        datasets.push({
+
+            label:"Next Approximation",
+
+            data:[
+                {
+                    x:s.x,
+                    y:s.y
+                },
+                {
+                    x:s.next,
+                    y:0
+                }
+            ],
+
+            borderColor:"green",
+
+            borderDash:[10,10],
+
+            borderWidth:3,
+
+            showLine:true,
+
+            pointRadius:0
+        });
     }
 
-    if(chart2){
-        chart2.destroy();
+
+
+    if(chart){
+        chart.destroy();
     }
 
-    const ctx = document.getElementById("chart2");
+    const ctx =
+        document.getElementById("chart");
 
-    chart2 = new Chart(ctx,{
+    chart = new Chart(ctx,{
 
-        type:'scatter',
+        type:"scatter",
 
         data:{
             datasets:datasets
@@ -430,129 +423,151 @@ function drawConvergenceMap(){
 
         options:{
 
+            responsive:false,
+
             animation:false,
+
+            aspectRatio:1.3,
 
             plugins:{
 
                 legend:{
-                    display:false
+                    display:true
+                },
+
+                zoom:{
+
+                    pan:{
+                        enabled:true,
+                        mode:'xy'
+                    },
+
+                    zoom:{
+
+                        wheel:{
+                            enabled:true,
+                            speed:0.03
+                        },
+
+                        pinch:{
+                            enabled:true
+                        },
+
+                        mode:'xy'
+                    }
                 }
             },
 
             scales:{
 
                 x:{
-                    min:-8,
-                    max:8,
+                    type:"linear",
 
-                    title:{
-                        display:true,
-                        text:'Initial Value'
+                    min:-graphRange,
+                    max:graphRange,
+
+                    ticks:{
+                        stepSize:5
                     }
                 },
 
                 y:{
-                    min:-8,
-                    max:8,
+                    min:-graphRange,
+                    max:graphRange,
 
-                    title:{
-                        display:true,
-                        text:'Converged Root'
+                    ticks:{
+                        stepSize:5
                     }
                 }
             }
         }
     });
 
-    chart2.options.plugins.zoom =
-        zoomOptions(chart2);
-}
 
-function nextStep(){
 
-    let y = f(currentX,A,B,C,D);
+    // 情報
 
-    let slope = df(currentX,A,B,C);
+    let text = "";
 
-    if(Math.abs(slope) < 1e-10){
+    if(currentStep < steps.length){
 
-        document.getElementById("info").innerHTML +=
+        let s =
+            steps[currentStep];
+
+        text =
         `
-        <br>
-        微分係数が0になった
+        <b>現在のステップ:</b>
+        ${currentStep+1}
+
+        <br><br>
+
+        <b>現在の x:</b>
+        ${s.x.toFixed(6)}
+
+        <br><br>
+
+        <b>f(x):</b>
+        ${s.y.toFixed(6)}
+
+        <br><br>
+
+        <b>次の近似:</b>
+        ${s.next.toFixed(6)}
+
+        <br><br>
+
+        スペースキーで次へ
         `;
-
-        return;
     }
-
-    let newX =
-        currentX -
-        LAMBDA * y/slope;
-
-    pathData.push({
-        x:currentX,
-        y:y
-    });
-
-    pathData.push({
-        x:newX,
-        y:0
-    });
-
-    chart1.update();
-
-    currentStep++;
 
     document.getElementById("info").innerHTML =
-    `
-    Step:
-    ${currentStep}
-
-    <br>
-
-    λ:
-    ${LAMBDA}
-
-    <br>
-
-    現在のx:
-    ${currentX.toFixed(10)}
-
-    <br>
-
-    次のx:
-    ${newX.toFixed(10)}
-
-    <br>
-
-    f(x):
-    ${y.toFixed(10)}
-    `;
-
-    currentX = newX;
-
-    if(Math.abs(f(currentX,A,B,C,D)) < 0.0000001){
-
-        document.getElementById("info").innerHTML +=
-        `
-        <br><br>
-        解に収束した:
-        ${currentX.toFixed(10)}
-        `;
-    }
+        text;
 }
 
-document.addEventListener("keydown", function(event){
 
-    if(event.code==="Space"){
 
-        event.preventDefault();
+// =========================
+// スペースキー
+// =========================
 
-        nextStep();
+document.addEventListener("keydown",(e)=>{
+
+    if(e.code==="Space"){
+
+        e.preventDefault();
+
+        if(currentStep < steps.length-1){
+
+            currentStep++;
+
+            let a =
+                parseFloat(
+                    document.getElementById("a").value
+                );
+
+            let b =
+                parseFloat(
+                    document.getElementById("b").value
+                );
+
+            let c =
+                parseFloat(
+                    document.getElementById("c").value
+                );
+
+            let d =
+                parseFloat(
+                    document.getElementById("d").value
+                );
+
+            draw(a,b,c,d);
+        }
     }
 });
 
-startNewton();
+
+
+generate();
 
 </script>
 
