@@ -83,11 +83,11 @@ Start
 </button>
 
 <p>
-スペースキーを押すと次のステップへ進む
+Space → 次のステップ
 </p>
 
 <p>
-Rキーでランダムな初期値を再抽選
+R → ランダム初期値を再抽選
 </p>
 
 <p>
@@ -119,6 +119,7 @@ let A,B,C,D;
 let pathData = [];
 
 // 固定λ
+
 const LAMBDA = 0.45;
 
 const BASE_X = 30;
@@ -178,7 +179,7 @@ function newton(start,a,b,c,d){
 // Zoom
 // =========================
 
-function zoomOptions(chart){
+function zoomOptions(){
 
     return {
 
@@ -215,9 +216,97 @@ function startNewton(){
     C = parseFloat(document.getElementById("c").value);
     D = parseFloat(document.getElementById("d").value);
 
-    // 広い範囲で再抽選
 
-    currentX = Math.random()*80 - 40;
+
+    // =========================
+    // 極値計算
+    //
+    // f'(x)=0
+    //
+    // 3Ax² + 2Bx + C = 0
+    // =========================
+
+    let discriminant =
+        4*B*B - 12*A*C;
+
+
+
+    // デフォルト
+
+    let leftBound = -40;
+    let rightBound = 40;
+
+
+
+    // 極値がある場合
+
+    if(discriminant > 0){
+
+        let critical1 =
+            (
+                -2*B -
+                Math.sqrt(discriminant)
+            ) / (6*A);
+
+        let critical2 =
+            (
+                -2*B +
+                Math.sqrt(discriminant)
+            ) / (6*A);
+
+
+
+        let minCritical =
+            Math.min(
+                critical1,
+                critical2
+            );
+
+        let maxCritical =
+            Math.max(
+                critical1,
+                critical2
+            );
+
+
+
+        // =========================
+        // 中心 ± 差
+        // =========================
+
+        let center =
+            (
+                minCritical +
+                maxCritical
+            ) / 2;
+
+        let spread =
+            (
+                maxCritical -
+                minCritical
+            );
+
+
+
+        leftBound =
+            center - spread;
+
+        rightBound =
+            center + spread;
+    }
+
+
+
+    // =========================
+    // 初期値
+    // =========================
+
+    currentX =
+        Math.random() *
+        (rightBound-leftBound)
+        + leftBound;
+
+
 
     currentStep = 0;
 
@@ -239,11 +328,17 @@ function startNewton(){
 
     <br><br>
 
+    初期値範囲:
+    [${leftBound.toFixed(3)},
+    ${rightBound.toFixed(3)}]
+
+    <br><br>
+
     Space → 次のステップ
 
     <br>
 
-    R → ランダム再抽選
+    R → 再抽選
     `;
 }
 
@@ -260,8 +355,6 @@ function drawMainGraph(){
     for(let X=-BASE_X; X<=BASE_X; X+=0.03){
 
         let Y = f(X,A,B,C,D);
-
-        // 爆発防止
 
         if(Math.abs(Y) < 500){
 
@@ -295,8 +388,6 @@ function drawMainGraph(){
         data:{
             datasets:[
 
-                // 関数
-
                 {
                     data:graphData,
                     borderColor:'blue',
@@ -304,8 +395,6 @@ function drawMainGraph(){
                     pointRadius:0,
                     borderWidth:2
                 },
-
-                // x軸
 
                 {
                     data:xAxis,
@@ -315,8 +404,6 @@ function drawMainGraph(){
                     borderWidth:5
                 },
 
-                // y軸
-
                 {
                     data:yAxis,
                     borderColor:'black',
@@ -324,8 +411,6 @@ function drawMainGraph(){
                     pointRadius:0,
                     borderWidth:5
                 },
-
-                // 軌跡
 
                 {
                     data:pathData,
@@ -349,7 +434,7 @@ function drawMainGraph(){
                     display:false
                 },
 
-                zoom: zoomOptions(chart1)
+                zoom: zoomOptions()
             },
 
             scales:{
@@ -357,20 +442,12 @@ function drawMainGraph(){
                 x:{
                     type:'linear',
                     min:-BASE_X,
-                    max:BASE_X,
-
-                    grid:{
-                        drawBorder:false
-                    }
+                    max:BASE_X
                 },
 
                 y:{
                     min:-BASE_Y,
-                    max:BASE_Y,
-
-                    grid:{
-                        drawBorder:false
-                    }
+                    max:BASE_Y
                 }
             }
         }
@@ -402,8 +479,6 @@ function drawConvergenceMap(){
     }
 
     let datasetsMap = {};
-
-    // 広い範囲
 
     for(let i=-1500;i<=1500;i++){
 
@@ -486,7 +561,7 @@ function drawConvergenceMap(){
                     display:false
                 },
 
-                zoom: zoomOptions(chart2)
+                zoom: zoomOptions()
             },
 
             scales:{
@@ -541,8 +616,6 @@ function nextStep(){
     let newX =
         currentX -
         LAMBDA * y/slope;
-
-    // 今までの点を全部残す
 
     pathData.push({
         x:currentX,
@@ -614,16 +687,12 @@ function nextStep(){
 
 document.addEventListener("keydown", function(event){
 
-    // Space → 次
-
     if(event.code==="Space"){
 
         event.preventDefault();
 
         nextStep();
     }
-
-    // R → 再抽選
 
     if(event.code==="KeyR"){
 
