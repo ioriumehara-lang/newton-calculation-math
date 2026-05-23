@@ -41,6 +41,11 @@ canvas{
     border-radius:10px;
     padding:10px;
     margin-top:20px;
+    cursor:grab;
+}
+
+canvas:active{
+    cursor:grabbing;
 }
 
 #info{
@@ -82,6 +87,10 @@ Start
 </p>
 
 <p>
+Rキーでランダムな初期値を再抽選
+</p>
+
+<p>
 マウスホイール / 2本指で拡大縮小
 </p>
 
@@ -112,16 +121,30 @@ let pathData = [];
 // 固定λ
 const LAMBDA = 0.45;
 
-const BASE_X = 6;
-const BASE_Y = 20;
+const BASE_X = 30;
+const BASE_Y = 80;
+
+
+
+// =========================
+// 関数
+// =========================
 
 function f(x,a,b,c,d){
+
     return a*x**3 + b*x**2 + c*x + d;
 }
 
 function df(x,a,b,c){
+
     return 3*a*x**2 + 2*b*x + c;
 }
+
+
+
+// =========================
+// ニュートン法
+// =========================
 
 function newton(start,a,b,c,d){
 
@@ -149,12 +172,19 @@ function newton(start,a,b,c,d){
     return null;
 }
 
+
+
+// =========================
+// Zoom
+// =========================
+
 function zoomOptions(chart){
 
     return {
 
         pan:{
-            enabled:false
+            enabled:true,
+            mode:'xy'
         },
 
         zoom:{
@@ -167,29 +197,16 @@ function zoomOptions(chart){
                 enabled:true
             },
 
-            mode:'xy',
-
-            onZoom(){
-
-                const xRange =
-                    chart.scales.x.max -
-                    chart.scales.x.min;
-
-                const yRange =
-                    chart.scales.y.max -
-                    chart.scales.y.min;
-
-                chart.options.scales.x.min = -xRange/2;
-                chart.options.scales.x.max =  xRange/2;
-
-                chart.options.scales.y.min = -yRange/2;
-                chart.options.scales.y.max =  yRange/2;
-
-                chart.update('none');
-            }
+            mode:'xy'
         }
     };
 }
+
+
+
+// =========================
+// 開始
+// =========================
 
 function startNewton(){
 
@@ -198,7 +215,9 @@ function startNewton(){
     C = parseFloat(document.getElementById("c").value);
     D = parseFloat(document.getElementById("d").value);
 
-    currentX = Math.random()*10 - 5;
+    // 広い範囲で再抽選
+
+    currentX = Math.random()*80 - 40;
 
     currentStep = 0;
 
@@ -220,20 +239,37 @@ function startNewton(){
 
     <br><br>
 
-    スペースキーで次へ
+    Space → 次のステップ
+
+    <br>
+
+    R → ランダム再抽選
     `;
 }
+
+
+
+// =========================
+// メイングラフ
+// =========================
 
 function drawMainGraph(){
 
     let graphData = [];
 
-    for(let X=-6; X<=6; X+=0.03){
+    for(let X=-BASE_X; X<=BASE_X; X+=0.03){
 
-        graphData.push({
-            x:X,
-            y:f(X,A,B,C,D)
-        });
+        let Y = f(X,A,B,C,D);
+
+        // 爆発防止
+
+        if(Math.abs(Y) < 500){
+
+            graphData.push({
+                x:X,
+                y:Y
+            });
+        }
     }
 
     let xAxis = [
@@ -259,6 +295,8 @@ function drawMainGraph(){
         data:{
             datasets:[
 
+                // 関数
+
                 {
                     data:graphData,
                     borderColor:'blue',
@@ -266,6 +304,8 @@ function drawMainGraph(){
                     pointRadius:0,
                     borderWidth:2
                 },
+
+                // x軸
 
                 {
                     data:xAxis,
@@ -275,6 +315,8 @@ function drawMainGraph(){
                     borderWidth:5
                 },
 
+                // y軸
+
                 {
                     data:yAxis,
                     borderColor:'black',
@@ -283,15 +325,14 @@ function drawMainGraph(){
                     borderWidth:5
                 },
 
+                // 軌跡
+
                 {
                     data:pathData,
                     borderColor:'red',
                     backgroundColor:'red',
                     showLine:true,
-
-                    // 点を小さく
                     pointRadius:3,
-
                     borderWidth:2
                 }
 
@@ -306,7 +347,9 @@ function drawMainGraph(){
 
                 legend:{
                     display:false
-                }
+                },
+
+                zoom: zoomOptions(chart1)
             },
 
             scales:{
@@ -332,10 +375,13 @@ function drawMainGraph(){
             }
         }
     });
-
-    chart1.options.plugins.zoom =
-        zoomOptions(chart1);
 }
+
+
+
+// =========================
+// 収束マップ
+// =========================
 
 function drawConvergenceMap(){
 
@@ -357,9 +403,11 @@ function drawConvergenceMap(){
 
     let datasetsMap = {};
 
-    for(let i=-400;i<=400;i++){
+    // 広い範囲
 
-        let start = i * 0.02;
+    for(let i=-1500;i<=1500;i++){
+
+        let start = i * 0.03;
 
         let result =
             newton(
@@ -436,14 +484,16 @@ function drawConvergenceMap(){
 
                 legend:{
                     display:false
-                }
+                },
+
+                zoom: zoomOptions(chart2)
             },
 
             scales:{
 
                 x:{
-                    min:-8,
-                    max:8,
+                    min:-50,
+                    max:50,
 
                     title:{
                         display:true,
@@ -452,8 +502,8 @@ function drawConvergenceMap(){
                 },
 
                 y:{
-                    min:-8,
-                    max:8,
+                    min:-20,
+                    max:20,
 
                     title:{
                         display:true,
@@ -463,10 +513,13 @@ function drawConvergenceMap(){
             }
         }
     });
-
-    chart2.options.plugins.zoom =
-        zoomOptions(chart2);
 }
+
+
+
+// =========================
+// 次ステップ
+// =========================
 
 function nextStep(){
 
@@ -489,6 +542,8 @@ function nextStep(){
         currentX -
         LAMBDA * y/slope;
 
+    // 今までの点を全部残す
+
     pathData.push({
         x:currentX,
         y:y
@@ -508,25 +563,33 @@ function nextStep(){
     Step:
     ${currentStep}
 
-    <br>
+    <br><br>
 
     λ:
     ${LAMBDA}
 
-    <br>
+    <br><br>
 
     現在のx:
     ${currentX.toFixed(10)}
 
-    <br>
+    <br><br>
 
     次のx:
     ${newX.toFixed(10)}
 
-    <br>
+    <br><br>
 
     f(x):
     ${y.toFixed(10)}
+
+    <br><br>
+
+    Space → 次へ
+
+    <br>
+
+    R → 再抽選
     `;
 
     currentX = newX;
@@ -536,13 +599,22 @@ function nextStep(){
         document.getElementById("info").innerHTML +=
         `
         <br><br>
+
         解に収束した:
         ${currentX.toFixed(10)}
         `;
     }
 }
 
+
+
+// =========================
+// キー操作
+// =========================
+
 document.addEventListener("keydown", function(event){
+
+    // Space → 次
 
     if(event.code==="Space"){
 
@@ -550,7 +622,22 @@ document.addEventListener("keydown", function(event){
 
         nextStep();
     }
+
+    // R → 再抽選
+
+    if(event.code==="KeyR"){
+
+        event.preventDefault();
+
+        startNewton();
+    }
 });
+
+
+
+// =========================
+// 初期起動
+// =========================
 
 startNewton();
 
