@@ -80,14 +80,14 @@ canvas:active{
 
 <br><br>
 
-v1.3 Update
+v1.4 Update
 
 <ul>
-<li>初期値範囲を極大・極小から自動計算</li>
-<li>グラフ範囲を初期値に応じて自動調整</li>
-<li>Rキーでランダム再抽選</li>
-<li>Space連打向けに視認性改善</li>
-<li>隠しコマンド追加</li>
+<li>初期値範囲を極値から自動計算</li>
+<li>グラフ表示範囲をさらに縮小</li>
+<li>Space連打で追いやすく改善</li>
+<li>Rキー再抽選</li>
+<li>隠しコマンド実装</li>
 </ul>
 
 </div>
@@ -121,7 +121,7 @@ Space → 次のステップ
 </p>
 
 <p>
-R → ランダム初期値を再抽選
+R → ランダム再抽選
 </p>
 
 <p id="info"></p>
@@ -150,8 +150,8 @@ let pathData = [];
 
 const LAMBDA = 0.45;
 
-let BASE_X = 10;
-let BASE_Y = 30;
+let BASE_X = 8;
+let BASE_Y = 15;
 
 let leftBound = -10;
 let rightBound = 10;
@@ -163,6 +163,7 @@ let rightBound = 10;
 // =========================
 
 let secret = "";
+
 const target = "umehara";
 
 document.addEventListener("keydown",(e)=>{
@@ -283,15 +284,17 @@ function startNewton(){
 
 
 
+    // =========================
     // 極値
+    // =========================
 
     let discriminant =
         4*B*B - 12*A*C;
 
 
 
-    leftBound = -40;
-    rightBound = 40;
+    leftBound = -20;
+    rightBound = 20;
 
 
 
@@ -342,7 +345,9 @@ function startNewton(){
 
 
 
+    // =========================
     // 初期値
+    // =========================
 
     currentX =
         Math.random() *
@@ -351,17 +356,19 @@ function startNewton(){
 
 
 
-    // 表示範囲を自動調整
+    // =========================
+    // 表示範囲
+    // =========================
 
     BASE_X =
         Math.max(
-            6,
+            4,
             Math.abs(leftBound),
             Math.abs(rightBound)
-        ) * 1.8;
+        ) * 1.15;
 
     BASE_Y =
-        BASE_X * 3;
+        BASE_X * 1.8;
 
 
 
@@ -394,14 +401,14 @@ function startNewton(){
 
 
 // =========================
-// メイングラフ
+// Main Graph
 // =========================
 
 function drawMainGraph(){
 
     let graphData = [];
 
-    for(let X=-BASE_X; X<=BASE_X; X+=0.03){
+    for(let X=-BASE_X; X<=BASE_X; X+=0.02){
 
         let Y = f(X,A,B,C,D);
 
@@ -528,9 +535,9 @@ function drawConvergenceMap(){
 
     let datasetsMap = {};
 
-    for(let i=-1500;i<=1500;i++){
+    for(let i=-1200;i<=1200;i++){
 
-        let start = i * 0.03;
+        let start = i * 0.025;
 
         let result =
             newton(start,A,B,C,D);
@@ -613,8 +620,8 @@ function drawConvergenceMap(){
             scales:{
 
                 x:{
-                    min:leftBound*2,
-                    max:rightBound*2
+                    min:leftBound*1.5,
+                    max:rightBound*1.5
                 },
 
                 y:{
